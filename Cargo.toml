@@ -79,12 +79,12 @@ rmcp = { version = "1.2", features = ["server", "macros", "transport-io"] }
 schemars = { version = "1", features = ["chrono04"] }
 
 # Internal crates
-pix-core = { path = "crates/pix-core", version = "0.1.0" }
-pix-brcode = { path = "crates/pix-brcode", version = "0.1.0" }
-pix-provider = { path = "crates/pix-provider", version = "0.1.0" }
-pix-efi = { path = "crates/pix-efi", version = "0.1.0" }
-pix-config = { path = "crates/pix-config", version = "0.1.0" }
-pix-webhook-server = { path = "crates/pix-webhook-server", version = "0.1.0" }
+pix-core = { path = "crates/pix-core", version = "0.0.1" }
+pix-brcode = { path = "crates/pix-brcode", version = "0.0.1" }
+pix-provider = { path = "crates/pix-provider", version = "0.0.1" }
+pix-efi = { path = "crates/pix-efi", version = "0.0.1" }
+pix-config = { path = "crates/pix-config", version = "0.0.1" }
+pix-webhook-server = { path = "crates/pix-webhook-server", version = "0.0.1" }
 
 [package]
 name = "pixcli"
