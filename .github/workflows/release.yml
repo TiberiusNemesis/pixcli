@@ -3,94 +3,235 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
-  build:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run tests
+        run: cargo test --workspace
+
+  publish-crates:
+    name: Publish to crates.io
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Publish pix-core
+        run: cargo publish -p pix-core --allow-dirty || true
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      - name: Publish pix-config
+        run: cargo publish -p pix-config --allow-dirty || true
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      - name: Publish pix-brcode
+        run: cargo publish -p pix-brcode --allow-dirty || true
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      - name: Publish pix-provider
+        run: cargo publish -p pix-provider --allow-dirty || true
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      - name: Publish pix-efi
+        run: cargo publish -p pix-efi --allow-dirty || true
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      - name: Publish pix-webhook-server
+        run: cargo publish -p pix-webhook-server --allow-dirty || true
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      - name: Publish pix-mcp
+        run: cargo publish -p pix-mcp --allow-dirty || true
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for crates.io index
+        run: sleep 30
+
+      - name: Publish pixcli
+        run: cargo publish -p pixcli --allow-dirty || true
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  build-binaries:
     name: Build ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+    needs: test
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            binary: pixcli
-            archive: tar.gz
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            binary: pixcli
             archive: tar.gz
           - target: x86_64-apple-darwin
-            os: macos-latest
-            binary: pixcli
+            os: macos-13
             archive: tar.gz
           - target: aarch64-apple-darwin
-            os: macos-latest
-            binary: pixcli
+            os: macos-14
             archive: tar.gz
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            binary: pixcli.exe
             archive: zip
-
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
-      - name: Install cross (Linux aarch64)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: cargo install cross
+      - name: Build release binaries
+        run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Build
-        run: |
-          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-            cross build --release --target ${{ matrix.target }} -p pixcli -p pix-mcp -p pix-webhook-server
-          else
-            cargo build --release --target ${{ matrix.target }} -p pixcli -p pix-mcp -p pix-webhook-server
-          fi
-        shell: bash
-
-      - name: Package (Unix)
+      - name: Package (unix)
         if: matrix.archive == 'tar.gz'
-        run: |
-          cd target/${{ matrix.target }}/release
-          tar czf ../../../pixcli-${{ github.ref_name }}-${{ matrix.target }}.tar.gz pixcli pix-mcp pix-webhook-server
         shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          ARCHIVE="pixcli-${TAG}-${{ matrix.target }}.tar.gz"
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/pixcli dist/
+          cp target/${{ matrix.target }}/release/pix-mcp dist/
+          cp target/${{ matrix.target }}/release/pix-webhook-server dist/
+          tar -czf "${ARCHIVE}" -C dist .
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
 
-      - name: Package (Windows)
+      - name: Package (windows)
         if: matrix.archive == 'zip'
+        shell: pwsh
         run: |
-          cd target/${{ matrix.target }}/release
-          7z a ../../../pixcli-${{ github.ref_name }}-${{ matrix.target }}.zip pixcli.exe pix-mcp.exe pix-webhook-server.exe
-        shell: bash
+          $TAG = $env:GITHUB_REF_NAME
+          $ARCHIVE = "pixcli-${TAG}-${{ matrix.target }}.zip"
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item "target/${{ matrix.target }}/release/pixcli.exe" dist/
+          Copy-Item "target/${{ matrix.target }}/release/pix-mcp.exe" dist/
+          Copy-Item "target/${{ matrix.target }}/release/pix-webhook-server.exe" dist/
+          Compress-Archive -Path dist/* -DestinationPath $ARCHIVE
+          echo "ARCHIVE=$ARCHIVE" >> $env:GITHUB_ENV
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: pixcli-${{ matrix.target }}
-          path: pixcli-${{ github.ref_name }}-${{ matrix.target }}.*
+          path: ${{ env.ARCHIVE }}
 
-  release:
-    name: Create Release
-    needs: build
+  create-release:
+    name: Create GitHub Release
+    needs: [build-binaries, publish-crates]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: Create Release
+      - name: List artifacts
+        run: ls -la artifacts/
+
+      - name: Generate release body
+        id: release_body
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          PREV_TAG=$(git tag --sort=-v:refname | grep '^v' | sed -n '2p' || echo "")
+
+          {
+            echo "body<<BODY_EOF"
+
+            if [ -n "$PREV_TAG" ]; then
+              echo "## What's Changed"
+              echo ""
+              git log "${PREV_TAG}..${TAG}" --pretty=format:"- %s (%h)" --no-merges
+              echo ""
+              echo ""
+            fi
+
+            cat <<'INSTALL'
+          ## Installation
+
+          ### From crates.io
+          ```bash
+          cargo install pixcli
+          ```
+
+          ### From binary
+          Download the archive for your platform, extract it, and place the binaries in your PATH.
+
+          | Platform | Archive |
+          |----------|---------|
+          INSTALL
+
+            echo "| Linux (x86_64) | \`pixcli-${TAG}-x86_64-unknown-linux-gnu.tar.gz\` |"
+            echo "| macOS (Intel) | \`pixcli-${TAG}-x86_64-apple-darwin.tar.gz\` |"
+            echo "| macOS (Apple Silicon) | \`pixcli-${TAG}-aarch64-apple-darwin.tar.gz\` |"
+            echo "| Windows (x86_64) | \`pixcli-${TAG}-x86_64-pc-windows-msvc.zip\` |"
+            echo ""
+
+            cat <<'EXTRACT'
+          **Linux / macOS:**
+          ```bash
+          tar -xzf pixcli-<TAG>-<TARGET>.tar.gz
+          sudo mv pixcli pix-mcp pix-webhook-server /usr/local/bin/
+          ```
+
+          **Windows:**
+          Extract the zip and add the directory to your PATH.
+          EXTRACT
+
+            echo "BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          draft: false
-          generate_release_notes: true
+          tag_name: ${{ github.ref_name }}
+          name: pixcli ${{ github.ref_name }}
+          body: ${{ steps.release_body.outputs.body }}
           files: artifacts/*
+          generate_release_notes: false
