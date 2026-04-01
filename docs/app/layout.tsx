@@ -9,6 +9,24 @@ export const metadata: Metadata = {
     template: '%s | pixcli',
   },
   description: 'CLI tool and Rust library for programmatic Pix payments in Brazil',
+  openGraph: {
+    title: 'pixcli',
+    description: 'CLI tool and Rust library for programmatic Pix payments in Brazil',
+    images: [
+      {
+        url: '/api/og?title=pixcli',
+        width: 1200,
+        height: 630,
+        alt: 'pixcli',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'pixcli',
+    description: 'CLI tool and Rust library for programmatic Pix payments in Brazil',
+    images: ['/api/og?title=pixcli'],
+  },
 };
 
 export default function Layout({ children }: { children: ReactNode }) {

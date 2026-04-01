@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@vercel/og": "^0.11.1",
     "fumadocs-core": "^16.7.4",
     "fumadocs-mdx": "^14.2.11",
     "fumadocs-ui": "^16.7.4",
