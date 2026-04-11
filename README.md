@@ -25,6 +25,7 @@
 - 📱 **QR code generation** — render in terminal or export as PNG
 - 🔍 **QR code decoding** — parse any Pix EMV/BR Code payload
 - 🤖 **MCP server** for AI agent integration (Claude Code, OpenClaw, etc.)
+- 🧠 **Agent skill** on [skills.sh](https://skills.sh) — `npx skills add pixcli/pixcli`
 - 🔔 **Webhook receiver** for real-time payment notifications
 - 🔒 **File-level permission protection** — config stored with `0600` (owner-only) permissions
 - 📊 **Multiple output formats** — human-readable, JSON, and table
@@ -223,6 +224,16 @@ plugins:
 | `list_received_pix` | List recent received Pix transactions |
 | `send_pix` | Send a Pix payment to a recipient |
 | `generate_qr` | Generate a static Pix QR code payload (offline) |
+
+### Agent Skill (skills.sh)
+
+Pixcli also ships an **agent skill** — a self-contained `SKILL.md` that teaches an AI agent when and how to use pixcli safely (trigger phrases, command reference, and safety rules for irreversible Pix payments). Install it into Claude Code, Cursor, or any [skills.sh](https://skills.sh)-compatible agent with a single command:
+
+```bash
+npx skills add pixcli/pixcli
+```
+
+The skill lives at [`skills/pixcli/SKILL.md`](skills/pixcli/SKILL.md) and complements the MCP server: the skill provides the *playbook*, `pix-mcp` provides the *tools*. See the [Agent Skill docs](https://docs-ecru-eta-65.vercel.app/docs/mcp/skill) for details.
 
 ## Configuration
 
