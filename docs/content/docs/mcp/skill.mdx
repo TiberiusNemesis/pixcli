@@ -1,0 +1,129 @@
+---
+title: Agent Skill
+description: Install the pixcli skill into Claude Code, Cursor, and other agents via skills.sh
+---
+
+In addition to the `pix-mcp` MCP server, pixcli ships an **agent skill** — a
+self-contained `SKILL.md` that teaches an AI agent when and how to use the
+`pixcli` CLI and its MCP tools safely. Skills are lighter-weight than MCP
+servers and can be installed into any agent runtime that supports the
+[skills.sh](https://skills.sh) ecosystem.
+
+## What is a skill?
+
+A [skill](https://skills.sh) is a single Markdown file with YAML frontmatter
+(`name` + `description`) that an AI agent loads into its context on demand.
+Unlike an MCP server, a skill has no long-running process — it is pure
+instructions. The pixcli skill tells the agent:
+
+- **When** to invoke pixcli (triggers: "send a Pix", "create a charge", etc.)
+- **Which** CLI commands and MCP tools to use for each operation
+- **How** to stay safe (sandbox defaults, high-value warnings, never leak
+  credentials, always confirm irreversible payments)
+
+Skills and MCP servers are complementary: the skill provides the *playbook*,
+and `pix-mcp` provides the *tools*. You can use one, the other, or both.
+
+## Install via the Skills CLI
+
+The skill lives at [`skills/pixcli/SKILL.md`](https://github.com/pixcli/pixcli/tree/main/skills/pixcli)
+inside the pixcli repository. Install it into any skills-compatible agent with:
+
+```bash
+npx skills add pixcli/pixcli
+```
+
+This fetches the skill from GitHub and drops it into the agent's skill
+directory. Restart your agent (Claude Code, Cursor, etc.) and the skill will
+be picked up automatically the next time a relevant trigger phrase is used.
+
+### Verify it loaded
+
+Ask your agent something like:
+
+```
+Can you check my Pix balance?
+```
+
+The agent should recognise the trigger, load the pixcli skill, and follow
+its playbook — including reminding you to run `pixcli config init` if you
+haven't configured a profile yet.
+
+## Manual install
+
+If you prefer not to use the CLI, copy the file into your agent's skill
+directory directly:
+
+```bash
+# Claude Code (project-scoped)
+mkdir -p .claude/skills/pixcli
+curl -fsSL https://raw.githubusercontent.com/pixcli/pixcli/main/skills/pixcli/SKILL.md \
+  -o .claude/skills/pixcli/SKILL.md
+
+# Cursor (user-scoped)
+mkdir -p ~/.cursor/skills/pixcli
+curl -fsSL https://raw.githubusercontent.com/pixcli/pixcli/main/skills/pixcli/SKILL.md \
+  -o ~/.cursor/skills/pixcli/SKILL.md
+```
+
+## Skill + MCP together
+
+For the best experience, install both:
+
+1. **Install the skill** (teaches the agent when/how to use pixcli):
+
+   ```bash
+   npx skills add pixcli/pixcli
+   ```
+
+2. **Configure the MCP server** (gives the agent the actual tools):
+
+   ```json
+   {
+     "mcpServers": {
+       "pixcli": {
+         "command": "pix-mcp",
+         "args": []
+       }
+     }
+   }
+   ```
+
+With both in place, an agent will recognise a Pix-related request, load the
+skill's safety rules and command reference, and invoke the `pix-mcp` tools
+to execute the operation.
+
+## What's in the skill
+
+The skill covers the full surface of pixcli:
+
+- **Prerequisites** — how to check for `pixcli`, install it, and run
+  `pixcli config init`
+- **Core commands** — `balance`, `charge create/list/get`, `pix list/get`,
+  `qr generate/decode`, `webhook register/get/listen`, `config init/show`
+- **MCP tools** — the six tools exposed by `pix-mcp`:
+  `pix_check_balance`, `pix_create_charge`, `pix_get_charge`,
+  `pix_list_transactions`, `pix_send_payment`, `pix_generate_qr`
+- **Safety rules** — Pix is irreversible; the skill enforces explicit
+  confirmation for `pix_send_payment`, sandbox-by-default for exploration,
+  high-value warnings above R$ 1000, and never logging credentials
+- **Troubleshooting** — the most common failure modes (PATH issues, mTLS
+  cert problems, sandbox/production confusion)
+
+You can read the full skill source at
+[`skills/pixcli/SKILL.md`](https://github.com/pixcli/pixcli/blob/main/skills/pixcli/SKILL.md).
+
+## Publishing updates
+
+The skill is published to [skills.sh](https://skills.sh) automatically via
+install telemetry — there is no separate submission step. When a new version
+of pixcli adds commands or MCP tools, update `skills/pixcli/SKILL.md` in the
+repo and open a PR. The next `npx skills add pixcli/pixcli` run will pick
+up the latest version from `main`.
+
+## See also
+
+- [MCP Server Overview](/docs/mcp/overview)
+- [Claude Code Setup](/docs/mcp/claude-code)
+- [OpenClaw Setup](/docs/mcp/openclaw)
+- [skills.sh](https://skills.sh) — the open agent skills ecosystem
